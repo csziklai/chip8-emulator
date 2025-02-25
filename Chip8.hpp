@@ -26,10 +26,13 @@ public:
     unsigned char key[16]; // hex-based keypad
 
     void init();
-    void loadGame(string name);
+    void loadGame(std::string name);
     void emulateCycle();
     void setKeys();
     void clear_display();
 
+    private:
+    void fetch();
 
-}
+
+};
