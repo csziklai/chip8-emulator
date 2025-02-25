@@ -1,0 +1,1 @@
+/Library/Developer/CommandLineTools/usr/bin/c++  -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/chip8.dir/src/main.cpp.o CMakeFiles/chip8.dir/src/chip8.cpp.o -o chip8  -framework OpenGL -framework GLUT -framework Cocoa
