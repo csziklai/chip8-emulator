@@ -2,10 +2,22 @@
 
 #include <string>
 #include <vector>
+#include <array>
 #include <cstdint>  // for uint8_t, uint16_t
 #include <cstddef>  // for std::byte
 
 Chip8::Chip8(){};
+
+void Chip8::init() {
+    pc = 0x200;
+    opcode = 0;
+    I = 0;
+    sp = 0;
+}
+
+void Chip8::loadGame(std::string name) {
+
+}
 
 void Chip8::emulateCycle() {
     // fetch opcode
