@@ -10,24 +10,11 @@ Chip8 prog;
 
 uint8_t screenData[SCREEN_HEIGHT][SCREEN_WIDTH][3]; 
 
-void display() {
-    prog.emulateCycle();
+int modifier = 10;
 
-    if (prog.drawFlag) {
-        glClear(GL_COLOR_BUFFER_BIT); //not sure about what this is doing
-
-    #ifdef DRAWWITHTEXTURE 
-        updateTexture(prog);
-    #else
-        updateQuads(prog);
-    #endif
-
-        glutSwapBuffers();
-
-        prog.drawFlag = false;
-    }
-
-}
+// Window size
+int display_width = SCREEN_WIDTH * modifier;
+int display_height = SCREEN_HEIGHT * modifier;
 
 void setupTexture()
 {
@@ -48,6 +35,47 @@ void setupTexture()
 	// Enable textures
 	glEnable(GL_TEXTURE_2D);
 }
+
+void updateTexture(const Chip8& c8)
+{	
+	// Update pixels
+	for(int y = 0; y < 32; ++y)		
+		for(int x = 0; x < 64; ++x)
+			if(c8.gfx[(y * 64) + x] == 0)
+				screenData[y][x][0] = screenData[y][x][1] = screenData[y][x][2] = 0;	// Disabled
+			else 
+				screenData[y][x][0] = screenData[y][x][1] = screenData[y][x][2] = 255;  // Enabled
+		
+	// Update Texture
+	glTexSubImage2D(GL_TEXTURE_2D, 0 ,0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)screenData);
+
+	glBegin( GL_QUADS );
+		glTexCoord2d(0.0, 0.0);		glVertex2d(0.0,			  0.0);
+		glTexCoord2d(1.0, 0.0); 	glVertex2d(display_width, 0.0);
+		glTexCoord2d(1.0, 1.0); 	glVertex2d(display_width, display_height);
+		glTexCoord2d(0.0, 1.0); 	glVertex2d(0.0,			  display_height);
+	glEnd();
+}
+
+void display() {
+    prog.emulateCycle();
+
+    if (prog.drawFlag) {
+        glClear(GL_COLOR_BUFFER_BIT); //not sure about what this is doing
+
+    #ifdef DRAWWITHTEXTURE 
+        updateTexture(prog);
+    #else
+        updateQuads(prog);
+    #endif
+
+        glutSwapBuffers();
+
+        prog.drawFlag = false;
+    }
+
+}
+
 
 void reshape_window(GLsizei w, GLsizei h) {
 	glClearColor(0.0f, 0.0f, 0.5f, 0.0f);
@@ -133,7 +161,7 @@ int main(int argc, char **argv) {
     glutCreateWindow("Chip-8 Emulator");
 
     glutDisplayFunc(display);
-    glutIdleFunc(display)
+    glutIdleFunc(display);
 
     // TODO need to define the following functions
     glutReshapeFunc(reshape_window);        

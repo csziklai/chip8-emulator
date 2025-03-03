@@ -1,10 +1,31 @@
 #include "Chip8.hpp"
-
 #include <string>
 #include <vector>
 #include <array>
 #include <cstdint>  // for uint8_t, uint16_t
 #include <cstddef>  // for std::byte
+#include <iostream>
+#include <fstream>
+
+unsigned char chip8_fontset[80] =
+{ 
+  0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+  0x20, 0x60, 0x20, 0x20, 0x70, // 1
+  0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+  0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+  0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+  0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+  0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+  0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+  0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+  0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+  0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+  0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+  0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+  0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+  0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+  0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+};
 
 Chip8::Chip8(){};
 
@@ -13,9 +34,35 @@ void Chip8::init() {
     opcode = 0;
     I = 0;
     sp = 0;
+
+    drawFlag = true;
+    // Load fontset
+	for(int i = 0; i < 80; ++i) {
+        memory[i] = chip8_fontset[i];
+    }
+    
 }
 
-void Chip8::loadGame(std::string name) {
+void Chip8::loadGame(std::string filename) {
+    init();
+    std::ifstream file(filename, std::ios::binary | std::ios::ate);
+    if (!file) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return;
+    }
+
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    if (size > 3584) {  // Ensure it fits within available memory (4096 - 0x200)
+        std::cerr << "ROM too large to fit in memory" << std::endl;
+        return;
+    }
+
+    file.read(reinterpret_cast<char*>(&memory[0x200]), size);
+    file.close();
+
+
 
 }
 
@@ -47,20 +94,50 @@ void Chip8::emulateCycle() {
         case 5:
         case 6:
             V[X] = NN;
+            break;
         case 7:
             V[X] += NN;
+            break;
         case 8:
         case 9:
         case 0xA:
             I = NNN;
+            break;
         case 0xB:
         case 0xC:
-        case 0xD:
-            int x = V[X]; // x-coord
-            int y = V[Y]; // y-coord
-            
-        case 0xE:
-        case 0xF:
+        case 0xD: {
+            unsigned short x = V[X]; // & 63?
+            unsigned short y = V[Y]; // & 31
+            unsigned short height = NN;
+            unsigned short pixel;
+            V[0xF] = 0;
+
+            for (int yline = 0; yline < height; yline++) {
+                pixel = memory[I + y];
+                for (int xline = 0; xline < 8; xline++) {
+                    unsigned short mask = 0x80 >> xline;
+                    if ((pixel & mask) == 1) { // it is on
+                        int idx = x + xline + ((y + yline)*64);
+                        if (gfx[idx] == 1) {
+                            V[0xF] = 1;
+                        }
+                        
+                        gfx[idx] ^= 1;
+
+                    }
+                }
+
+            }
+            drawFlag = true;
+            break;
+        }   
+        case 0xE: {
+            break;
+        }
+
+        case 0xF: {
+            break;
+        }
 
     }
     
@@ -70,10 +147,9 @@ void Chip8::emulateCycle() {
     // update timers
 }
 
-void Chip8::fetch() {
-
-}
 
 void Chip8::clear_display() {
+    gfx.fill(0);
+
 
 }

@@ -111,9 +111,6 @@ chip8_EXTERNAL_OBJECTS =
 chip8: CMakeFiles/chip8.dir/src/main.cpp.o
 chip8: CMakeFiles/chip8.dir/src/chip8.cpp.o
 chip8: CMakeFiles/chip8.dir/build.make
-chip8: /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/System/Library/Frameworks/OpenGL.framework
-chip8: /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/System/Library/Frameworks/GLUT.framework
-chip8: /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/System/Library/Frameworks/Cocoa.framework
 chip8: CMakeFiles/chip8.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/cassandrasziklai/projects/chip-8emulator/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX executable chip8"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/chip8.dir/link.txt --verbose=$(VERBOSE)
