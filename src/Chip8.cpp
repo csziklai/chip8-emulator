@@ -6,6 +6,7 @@
 #include <cstddef>  // for std::byte
 #include <iostream>
 #include <fstream>
+#include <cstdlib>
 
 unsigned char chip8_fontset[80] =
 { 
@@ -42,9 +43,6 @@ void Chip8::init() {
 	for(int i = 0; i < 80; ++i) {
         memory[i] = chip8_fontset[i];
     }
-    for (int i = 0; i < 80; i++) {
-        std::cout << "Font[" << i << "] = " << std::hex << (int)memory[i] << std::endl;
-    }
 
     
 }
@@ -65,10 +63,6 @@ void Chip8::loadGame(std::string filename) {
     }
 
     file.read(reinterpret_cast<char*>(&memory[0x200]), size);
-
-    for (int i = 0x200; i < 0x210; i++) {
-        std::cout << "Memory[" << i << "] = " << std::hex << (int)memory[i] << std::endl;
-    }
     
     file.close();
 
@@ -91,6 +85,11 @@ void Chip8::emulateCycle() {
         case 0x0:
             if (N == 0) {
                 clear_display();
+            } else if (N == 0xE) {
+                unsigned short top = stack.top();
+                stack.pop();
+                pc = top;
+
             } else {
                 return;
             }
@@ -100,9 +99,24 @@ void Chip8::emulateCycle() {
             pc = NNN;
             break;
         case 2:
+            stack.push(pc-2);
+            pc = NNN;
+            break;
         case 3:
+            if (V[X] == NN) {
+                pc += 2;
+            }
+            break;
         case 4:
+            if (V[X] != NN) {
+                pc += 2;
+            }
+            break;
         case 5:
+            if (V[X] == V[Y]) {
+                pc += 2;
+            }
+            break;
         case 6:
             V[X] = NN;
             break;
@@ -110,15 +124,74 @@ void Chip8::emulateCycle() {
             V[X] += NN;
             break;
         case 8:
+            switch(N) { // least significant nibble
+                case 0:
+                    V[X] = V[Y];
+                    break;
+                case 1:
+                    V[X] = V[X] | V[Y];
+                    break;
+                case 2:
+                    V[X] = V[X] & V[Y];
+                    break;
+                case 3:
+                    V[X] = V[X] ^ V[Y]; //XOR
+                    break;
+                case 4:
+                    V[X] += V[Y];
+                    if (V[X] > 255) {
+                        V[0xF] = 1; //this is how you do it?
+                    } else {
+                        V[0xF] = 0;
+                    }
+                    break;
+                case 5:
+                    V[X] -= V[Y];
+                    if (V[X] >= V[Y]) { //ambiguous on >= or >?
+                        V[0xF] = 1;
+                    } else {
+                        V[0xF] = 0;
+                    }
+                    break;
+                case 6: {
+                    unsigned char lsb = V[Y] & 1;
+                    V[X] = V[Y] >> 1;
+                    V[0xF] = lsb;
+                    break;  
+                }                  
+                case 7:
+                    V[X] = V[Y] - V[X];
+                    if (V[Y] >= V[X]) { //ambiguous on >= or >?
+                        V[0xF] = 1;
+                    } else {
+                        V[0xF] = 0;
+                    }
+                    break;
+                case 8: {
+                    unsigned char msb = V[Y] >> 31; //does this work?
+                    V[X] = V[Y] << 1;
+                    V[0xF] = msb;
+                    break; 
+                }
+            }
+            break;
         case 9:
+            if (V[X] != V[Y]) {
+                pc += 2;
+            }
+            break;
         case 0xA:
             I = NNN;
             break;
         case 0xB:
-        case 0xC:
+            pc = NNN + V[0];
+            break;
+        case 0xC: {
+            int randNum = rand() % (NN + 1); //do we want a diff random number every time the program runs?
+            V[X] = randNum & NN;
+            break;
+        }
         case 0xD: {
-            std::cout << "Executing draw opcode!" << std::endl;
-
             unsigned short x = V[X] & 63;
             unsigned short y = V[Y] & 31;
             unsigned short height = N;
