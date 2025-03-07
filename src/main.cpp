@@ -1,6 +1,7 @@
 #include "Chip8.hpp"
 #include <stdio.h>
 #include <GL/glut.h>
+#include <iostream>
 
 Chip8 prog;
 
@@ -59,15 +60,25 @@ void updateTexture(const Chip8& c8)
 
 void display() {
     prog.emulateCycle();
+	//std::cout << "in display()" << std::endl;
 
     if (prog.drawFlag) {
         glClear(GL_COLOR_BUFFER_BIT); //not sure about what this is doing
+		std::cout << "drawFlag true" << std::endl;
 
-    #ifdef DRAWWITHTEXTURE 
+		for (int i = 0; i < 10; i++) {
+			std::cout << "gfx[" << i << "] = " << (int)prog.gfx[i] << std::endl;
+		}
+		
+#ifdef DRAWWITHTEXTURE 
         updateTexture(prog);
-    #else
+#else
         updateQuads(prog);
-    #endif
+		for (int i = 0; i < 10; i++) {
+			std::cout << "gfx[" << i << "] = " << (int)prog.gfx[i] << std::endl;
+		}
+		
+#endif
 
         glutSwapBuffers();
 
@@ -163,7 +174,6 @@ int main(int argc, char **argv) {
     glutDisplayFunc(display);
     glutIdleFunc(display);
 
-    // TODO need to define the following functions
     glutReshapeFunc(reshape_window);        
 	glutKeyboardFunc(keyboardDown);
 	glutKeyboardUpFunc(keyboardUp);

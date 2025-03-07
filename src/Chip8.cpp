@@ -36,15 +36,20 @@ void Chip8::init() {
     sp = 0;
 
     drawFlag = true;
+    std::array<unsigned char, 64 * 32> gfx = {}; // Ensures all elements are 0
+
     // Load fontset
 	for(int i = 0; i < 80; ++i) {
         memory[i] = chip8_fontset[i];
     }
+    for (int i = 0; i < 80; i++) {
+        std::cout << "Font[" << i << "] = " << std::hex << (int)memory[i] << std::endl;
+    }
+
     
 }
 
 void Chip8::loadGame(std::string filename) {
-    init();
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
     if (!file) {
         std::cerr << "Failed to open file: " << filename << std::endl;
@@ -60,6 +65,11 @@ void Chip8::loadGame(std::string filename) {
     }
 
     file.read(reinterpret_cast<char*>(&memory[0x200]), size);
+
+    for (int i = 0x200; i < 0x210; i++) {
+        std::cout << "Memory[" << i << "] = " << std::hex << (int)memory[i] << std::endl;
+    }
+    
     file.close();
 
 
@@ -68,6 +78,7 @@ void Chip8::loadGame(std::string filename) {
 
 void Chip8::emulateCycle() {
     // fetch opcode
+    //std::cout << "Emulating cycle..." << std::endl;
     opcode = memory[pc] << 8 | memory[pc+1];
     pc += 2;
     uint8_t first = static_cast<uint8_t>((opcode & 0xF000)>> 12);
@@ -106,23 +117,28 @@ void Chip8::emulateCycle() {
         case 0xB:
         case 0xC:
         case 0xD: {
+            std::cout << "Executing draw opcode!" << std::endl;
+
             unsigned short x = V[X]; // & 63?
             unsigned short y = V[Y]; // & 31
             unsigned short height = NN;
             unsigned short pixel;
             V[0xF] = 0;
+            //std::cout << "Sprite row data: " << std::bitset<8>(pixel) << std::endl;
 
             for (int yline = 0; yline < height; yline++) {
-                pixel = memory[I + y];
+                pixel = memory[I + yline];
                 for (int xline = 0; xline < 8; xline++) {
                     unsigned short mask = 0x80 >> xline;
                     if ((pixel & mask) == 1) { // it is on
-                        int idx = x + xline + ((y + yline)*64);
+                        int idx = ((x + xline)%64) + (((y + yline)%32)*64);
+                        std::cout << "Drawing at (" << x + xline << ", " << y + yline << ") Index: " 
+          << (x + xline + ((y + yline) * 64)) << std::endl;
                         if (gfx[idx] == 1) {
                             V[0xF] = 1;
+                            std::cout << "Collision detected at: " << (x + xline) << "," << (y + yline) << std::endl;
                         }
-                        
-                        gfx[idx] ^= 1;
+                        gfx[idx] = 1;
 
                     }
                 }
