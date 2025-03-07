@@ -85,7 +85,7 @@ void Chip8::emulateCycle() {
     uint8_t X = static_cast<uint8_t>((opcode & 0x0F00)>> 8); // second nibble
     uint8_t Y = static_cast<uint8_t>((opcode & 0x00F0)>> 4); // 3rd nibble
     uint8_t N = static_cast<uint8_t>(opcode & 0x000F); // 4th nibble
-    uint8_t NN = static_cast<uint8_t>(opcode & 0xFF00);
+    uint8_t NN = static_cast<uint8_t>(opcode & 0x00FF);
     uint16_t NNN = opcode & 0x0FFF;
     switch(first) {
         case 0x0:
@@ -119,26 +119,30 @@ void Chip8::emulateCycle() {
         case 0xD: {
             std::cout << "Executing draw opcode!" << std::endl;
 
-            unsigned short x = V[X]; // & 63?
-            unsigned short y = V[Y]; // & 31
-            unsigned short height = NN;
+            unsigned short x = V[X] & 63;
+            unsigned short y = V[Y] & 31;
+            unsigned short height = N;
+            std::cout << "height: " << height << std::endl;
             unsigned short pixel;
             V[0xF] = 0;
             //std::cout << "Sprite row data: " << std::bitset<8>(pixel) << std::endl;
 
             for (int yline = 0; yline < height; yline++) {
                 pixel = memory[I + yline];
+                std::cout << "Row " << yline << ": " << std::bitset<8>(pixel) << std::endl;
+
                 for (int xline = 0; xline < 8; xline++) {
                     unsigned short mask = 0x80 >> xline;
-                    if ((pixel & mask) == 1) { // it is on
-                        int idx = ((x + xline)%64) + (((y + yline)%32)*64);
+                    std::cout << (pixel & mask) << std::endl;
+                    if ((pixel & mask) != 0) { // it is on
+                        int idx = x + xline + ((y + yline) * 64);
                         std::cout << "Drawing at (" << x + xline << ", " << y + yline << ") Index: " 
           << (x + xline + ((y + yline) * 64)) << std::endl;
                         if (gfx[idx] == 1) {
                             V[0xF] = 1;
                             std::cout << "Collision detected at: " << (x + xline) << "," << (y + yline) << std::endl;
                         }
-                        gfx[idx] = 1;
+                        gfx[idx] ^= 1;
 
                     }
                 }

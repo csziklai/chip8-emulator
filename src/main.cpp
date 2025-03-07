@@ -49,6 +49,7 @@ void updateTexture(const Chip8& c8)
 		
 	// Update Texture
 	glTexSubImage2D(GL_TEXTURE_2D, 0 ,0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)screenData);
+	std::cout << "updateTexture" << std::endl;
 
 	glBegin( GL_QUADS );
 		glTexCoord2d(0.0, 0.0);		glVertex2d(0.0,			  0.0);
@@ -64,19 +65,13 @@ void display() {
 
     if (prog.drawFlag) {
         glClear(GL_COLOR_BUFFER_BIT); //not sure about what this is doing
-		std::cout << "drawFlag true" << std::endl;
 
-		for (int i = 0; i < 10; i++) {
-			std::cout << "gfx[" << i << "] = " << (int)prog.gfx[i] << std::endl;
-		}
 		
 #ifdef DRAWWITHTEXTURE 
         updateTexture(prog);
+		
 #else
         updateQuads(prog);
-		for (int i = 0; i < 10; i++) {
-			std::cout << "gfx[" << i << "] = " << (int)prog.gfx[i] << std::endl;
-		}
 		
 #endif
 
@@ -167,8 +162,8 @@ int main(int argc, char **argv) {
     prog.loadGame(argv[1]);
     glutInit(&argc, argv);
 
-    glutInitWindowSize(500, 500);
-    glutInitWindowPosition(320, 320);
+    glutInitWindowSize(SCREEN_WIDTH * 10, SCREEN_HEIGHT * 10);
+    glutInitWindowPosition(0, 200);
     glutCreateWindow("Chip-8 Emulator");
 
     glutDisplayFunc(display);
