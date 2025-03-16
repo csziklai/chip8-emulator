@@ -49,7 +49,7 @@ void updateTexture(const Chip8& c8)
 		
 	// Update Texture
 	glTexSubImage2D(GL_TEXTURE_2D, 0 ,0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid*)screenData);
-	std::cout << "updateTexture" << std::endl;
+	//std::cout << "updateTexture" << std::endl;
 
 	glBegin( GL_QUADS );
 		glTexCoord2d(0.0, 0.0);		glVertex2d(0.0,			  0.0);

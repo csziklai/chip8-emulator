@@ -89,7 +89,6 @@ void Chip8::emulateCycle() {
                 unsigned short top = stack.top();
                 stack.pop();
                 pc = top;
-
             } else {
                 return;
             }
@@ -225,10 +224,46 @@ void Chip8::emulateCycle() {
             break;
         }   
         case 0xE: {
+
+            if (N == 0xE) {
+                if (key[V[X]] != 0) {
+                    pc += 2;
+
+                }
+            } else {
+                // N == 0x1
+                if (key[V[X]] == 0) {
+                    pc += 2;
+                }
+            }
             break;
         }
 
         case 0xF: {
+            switch(NN) {
+                case 0x07:
+                    V[X] = delay_timer;
+                    break;
+                case 0x15:
+                    delay_timer = V[X];
+                    break;
+                case 0x18:
+                    sound_timer = V[X];
+                    break;
+                case 0x1E:
+                    I += V[X];
+                    break;
+                case 0x0A:
+                    if (key[V[X]] == 0) {
+                        pc -= 2;
+                    }
+                    break; // double check
+                case 0x29:
+                    //I = V[X] LEFT OFF HERE
+                    
+
+
+            }
             break;
         }
 
