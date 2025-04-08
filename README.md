@@ -17,4 +17,4 @@ Run the program as `./chip8 <name-of-prog>.c8`. For example,
 ./chip8 invaders.c8
 ```
 Sample Chip8 programs can be found at this [repo](https://github.com/kripod/chip8-roms/tree/master). Programs may have to be renamed so that there are no 
-spaces in the file name.
+spaces in the file name. Note that this emulator only supports modern behavior (as opposed to older games from the 1970s/1980s).

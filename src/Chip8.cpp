@@ -259,9 +259,31 @@ void Chip8::emulateCycle() {
                     }
                     break; // double check
                 case 0x29:
-                    //I = V[X] LEFT OFF HERE
-                    
-
+                    I = V[X]; //LEFT OFF HERE
+                    break;
+                case 0x33: {
+                    int x = static_cast<int>(V[X]);
+                    memory[I] = x / 100;
+                    memory[I + 1] = (x / 10) % 10;
+                    memory[I + 2] = x % 10;
+                    break;
+                }
+                case 0x55: {
+                    unsigned short j = I;
+                    for (uint8_t i = 0; i < X; i++) {
+                        memory[j] = V[i];
+                        j += 1;
+                    }
+                    break;
+                }
+                case 0x65: {
+                    unsigned short k = I;
+                    for (uint8_t i = 0; i < X; i++) {
+                        V[i] = memory[k]; // not switch i and k as well?
+                        k += 1;
+                    }
+                    break;
+                }
 
             }
             break;
