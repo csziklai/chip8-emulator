@@ -8,6 +8,8 @@
 #include <fstream>
 #include <cstdlib>
 
+// was debugging using guess.ch8
+
 unsigned char chip8_fontset[80] =
 { 
   0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -35,6 +37,8 @@ void Chip8::init() {
     opcode = 0;
     I = 0;
     sp = 0;
+    delay_timer = 0;
+    sound_timer = 0;
 
     drawFlag = true;
     std::array<unsigned char, 64 * 32> gfx = {}; // Ensures all elements are 0
@@ -73,11 +77,12 @@ void Chip8::loadGame(std::string filename) {
 void Chip8::emulateCycle() {
     // fetch opcode
     //std::cout << "Emulating cycle..." << std::endl;
-    opcode = memory[pc] << 8 | memory[pc+1];
+    opcode = (memory[pc] << 8) | memory[pc+1];
+    //printf("PC: %03X | Opcode: %04X\n", pc, opcode);
     pc += 2;
     uint8_t first = static_cast<uint8_t>((opcode & 0xF000)>> 12);
     uint8_t X = static_cast<uint8_t>((opcode & 0x0F00)>> 8); // second nibble
-    uint8_t Y = static_cast<uint8_t>((opcode & 0x00F0)>> 4); // 3rd nibble
+    uint8_t Y = static_cast<uint8_t>((opcode & 0x00F0) >> 4); // 3rd nibble
     uint8_t N = static_cast<uint8_t>(opcode & 0x000F); // 4th nibble
     uint8_t NN = static_cast<uint8_t>(opcode & 0x00FF);
     uint16_t NNN = opcode & 0x0FFF;
@@ -85,10 +90,14 @@ void Chip8::emulateCycle() {
         case 0x0:
             if (N == 0) {
                 clear_display();
+                drawFlag = true;
             } else if (N == 0xE) {
-                unsigned short top = stack.top();
-                stack.pop();
-                pc = top;
+                sp = sp - 1;
+                pc = stack[sp];
+                pc += 2;
+                // unsigned short top = stack.top();
+                // stack.pop();
+                // pc = top;
             } else {
                 return;
             }
@@ -98,7 +107,9 @@ void Chip8::emulateCycle() {
             pc = NNN;
             break;
         case 2:
-            stack.push(pc-2);
+            stack[sp] = pc - 2;
+            sp = sp + 1;
+            //stack.push(pc-2);
             pc = NNN;
             break;
         case 3:
@@ -118,6 +129,7 @@ void Chip8::emulateCycle() {
             break;
         case 6:
             V[X] = NN;
+            std::cout << "SET V[" << static_cast<int>(X) << "] = " << static_cast<int>(NN) << " at PC " << std::hex << pc << std::endl;
             break;
         case 7:
             V[X] += NN;
@@ -136,38 +148,53 @@ void Chip8::emulateCycle() {
                 case 3:
                     V[X] = V[X] ^ V[Y]; //XOR
                     break;
-                case 4:
-                    V[X] += V[Y];
-                    if (V[X] > 255) {
-                        V[0xF] = 1; //this is how you do it?
-                    } else {
-                        V[0xF] = 0;
-                    }
+                case 4: {
+                    std::cout << "V[Y] is " << static_cast<int>(V[Y]) << std::endl;
+                    std::cout << "V[X] (before) is " << static_cast<int>(V[X]) << std::endl;
+                    
+                    uint16_t sum = V[X] + V[Y];
+                    std::cout << "sum is " << static_cast<int>(sum) << std::endl;
+                    V[0xF] = (sum > 255) ? 1 : 0;
+                    V[X] = sum & 0xFF;
+                    //std::cout << "[case 4] X is " << static_cast<int>(X) << std::endl;
+                    std::cout << "V[X] is " << static_cast<int>(V[X]) << std::endl;
+
                     break;
-                case 5:
-                    V[X] -= V[Y];
-                    if (V[X] >= V[Y]) { //ambiguous on >= or >?
+                }
+                case 5: {
+                    if (V[X] > V[Y]) { //ambiguous on >= or >?
                         V[0xF] = 1;
                     } else {
                         V[0xF] = 0;
                     }
+                    V[X] -= V[Y];
+                    std::cout << " [case 5] X is " << static_cast<int>(X) << std::endl;
+                    std::cout << "V[X] is " << static_cast<int>(V[X]) << std::endl;
+
                     break;
-                case 6: {
+                }
+                case 6: { //8XY6
                     unsigned char lsb = V[Y] & 1;
                     V[X] = V[Y] >> 1;
                     V[0xF] = lsb;
                     break;  
                 }                  
-                case 7:
-                    V[X] = V[Y] - V[X];
-                    if (V[Y] >= V[X]) { //ambiguous on >= or >?
+                case 7: {
+                    if (V[Y] > V[X]) { //ambiguous on >= or >?
                         V[0xF] = 1;
                     } else {
                         V[0xF] = 0;
                     }
+                    V[X] = V[Y] - V[X];
+                    std::cout << "[case 7] X is " << static_cast<int>(X) << std::endl;
+                    std::cout << "V[X] is " << static_cast<int>(V[X]) << std::endl;
+
                     break;
-                case 8: {
+                }
+                case 0xE: { //8XYE
+                    std::cout << "in 0x8XXE, V[Y] is " << V[Y] << std::endl;
                     unsigned char msb = V[Y] >> 31; //does this work?
+                    std::cout << "msb: " << msb << std::endl;
                     V[X] = V[Y] << 1;
                     V[0xF] = msb;
                     break; 
@@ -194,25 +221,25 @@ void Chip8::emulateCycle() {
             unsigned short x = V[X] & 63;
             unsigned short y = V[Y] & 31;
             unsigned short height = N;
-            std::cout << "height: " << height << std::endl;
+            // std::cout << "height: " << height << std::endl;
             unsigned short pixel;
             V[0xF] = 0;
             //std::cout << "Sprite row data: " << std::bitset<8>(pixel) << std::endl;
 
             for (int yline = 0; yline < height; yline++) {
                 pixel = memory[I + yline];
-                std::cout << "Row " << yline << ": " << std::bitset<8>(pixel) << std::endl;
+                //std::cout << "Row " << yline << ": " << std::bitset<8>(pixel) << std::endl;
 
                 for (int xline = 0; xline < 8; xline++) {
                     unsigned short mask = 0x80 >> xline;
-                    std::cout << (pixel & mask) << std::endl;
+                    //std::cout << (pixel & mask) << std::endl;
                     if ((pixel & mask) != 0) { // it is on
                         int idx = x + xline + ((y + yline) * 64);
-                        std::cout << "Drawing at (" << x + xline << ", " << y + yline << ") Index: " 
-          << (x + xline + ((y + yline) * 64)) << std::endl;
+                        //std::cout << "Drawing at (" << x + xline << ", " << y + yline << ") Index: " 
+          //<< (x + xline + ((y + yline) * 64)) << std::endl;
                         if (gfx[idx] == 1) {
                             V[0xF] = 1;
-                            std::cout << "Collision detected at: " << (x + xline) << "," << (y + yline) << std::endl;
+                            //std::cout << "Collision detected at: " << (x + xline) << "," << (y + yline) << std::endl;
                         }
                         gfx[idx] ^= 1;
 
@@ -224,11 +251,9 @@ void Chip8::emulateCycle() {
             break;
         }   
         case 0xE: {
-
             if (N == 0xE) {
                 if (key[V[X]] != 0) {
                     pc += 2;
-
                 }
             } else {
                 // N == 0x1
@@ -253,14 +278,23 @@ void Chip8::emulateCycle() {
                 case 0x1E:
                     I += V[X];
                     break;
-                case 0x0A:
-                    if (key[V[X]] == 0) {
+                case 0x0A: {
+                    bool key_press = false;
+                    for (int i = 0; i < 16; i++) {
+                        if (key[i] != 0) {
+                            key_press = true;
+                            V[X] = i; //is it automatically hexadecimal that is put in?
+                        }
+                    }
+                    if (!key_press) {
                         pc -= 2;
                     }
-                    break; // double check
-                case 0x29:
+                    break;
+                }
+                case 0x29: {
                     I = V[X]; //LEFT OFF HERE
                     break;
+                }
                 case 0x33: {
                     int x = static_cast<int>(V[X]);
                     memory[I] = x / 100;
@@ -290,11 +324,7 @@ void Chip8::emulateCycle() {
         }
 
     }
-    
-    // decode opcode
-    // execute opcode
 
-    // update timers
 }
 
 

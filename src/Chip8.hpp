@@ -12,7 +12,7 @@ public:
     std::array<unsigned char, 4096> memory = {};  // Zero-initialized
     std::array<unsigned char, 16> V{}; // 16 registers
     std::array<unsigned char, 64 * 32> gfx{}; //graphics
-    std::stack<unsigned short> stack; //stack to remember current location before jumping
+    std::array<unsigned short, 16> stack; //stack to remember current location before jumping
     std::array<unsigned char, 16> key{}; // hex-based keypad
 
     bool drawFlag;
