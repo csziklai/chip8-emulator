@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <GL/glut.h>
 #include <iostream>
+#include <chrono>
 
 Chip8 prog;
 
@@ -16,6 +17,12 @@ int modifier = 10;
 // Window size
 int display_width = SCREEN_WIDTH * modifier;
 int display_height = SCREEN_HEIGHT * modifier;
+
+auto last_timer_update = std::chrono::high_resolution_clock::now();
+const int TIMER_HZ = 60;
+const int TIMER_INTERVAL_MS = 1000 / TIMER_HZ;
+
+const int OPCODES_PER_FRAME = 10;
 
 void setupTexture()
 {
@@ -60,8 +67,24 @@ void updateTexture(const Chip8& c8)
 }
 
 void display() {
-    prog.emulateCycle();
-	//std::cout << "in display()" << std::endl;
+	for (int i = 0; i < OPCODES_PER_FRAME; i++) {
+		prog.emulateCycle();
+	}
+    
+	auto now = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_timer_update);
+	if (duration.count() >= TIMER_INTERVAL_MS) {
+		if (prog.delay_timer > 0) {
+			prog.delay_timer -= 1;
+		}
+		if (prog.sound_timer > 0) {
+			if (prog.sound_timer == 1) {
+				std::cout << "beep!" << std::endl;
+			}
+			prog.sound_timer -= 1;
+		}
+		last_timer_update = now;
+	}
 
     if (prog.drawFlag) {
         glClear(GL_COLOR_BUFFER_BIT); //not sure about what this is doing
@@ -146,7 +169,10 @@ void keyboardUp(unsigned char key, int x, int y)
 	else if(key == 'v')	prog.key[0xF] = 0;
 }
 
-
+void timer(int) {
+	glutPostRedisplay();
+	glutTimerFunc(16, timer, 0);
+}
 
 int main(int argc, char **argv) {
     if(argc < 2)
@@ -154,9 +180,7 @@ int main(int argc, char **argv) {
 		printf("Usage: ./chip8 prog_name\n");
 		return 1;
 	}
-
-    // set up graphics
-    // set up input
+	srand(time(0));
 
     prog.init();
     prog.loadGame(argv[1]);
@@ -167,7 +191,7 @@ int main(int argc, char **argv) {
     glutCreateWindow("Chip-8 Emulator");
 
     glutDisplayFunc(display);
-    glutIdleFunc(display);
+    glutTimerFunc(0, timer, 0);
 
     glutReshapeFunc(reshape_window);        
 	glutKeyboardFunc(keyboardDown);

@@ -86,6 +86,12 @@ void Chip8::emulateCycle() {
     uint8_t N = static_cast<uint8_t>(opcode & 0x000F); // 4th nibble
     uint8_t NN = static_cast<uint8_t>(opcode & 0x00FF);
     uint16_t NNN = opcode & 0x0FFF;
+    // if (X == 2 && first!=0xA && first!=1) {
+    //     printf("Opcode X=2 : %04X\n", opcode);
+    // }
+    // if (X == 1 && first!=0xA && first!=1) {
+    //     printf("Opcode X=1 : %04X\n", opcode);
+    // }
     switch(first) {
         case 0x0:
             if (N == 0) {
@@ -129,10 +135,13 @@ void Chip8::emulateCycle() {
             break;
         case 6:
             V[X] = NN;
-            std::cout << "SET V[" << static_cast<int>(X) << "] = " << static_cast<int>(NN) << " at PC " << std::hex << pc << std::endl;
+            // << "SET V[" << static_cast<int>(X) << "] = " << static_cast<int>(NN) << " at PC " << std::hex << pc << std::endl;
             break;
         case 7:
             V[X] += NN;
+            // std::cout << "Adding " << static_cast<int>(NN)
+            //   << " to V[" << static_cast<int>(X)
+            //   << "] which was " << static_cast<int>(V[X]) << "\n";
             break;
         case 8:
             switch(N) { // least significant nibble
@@ -149,27 +158,25 @@ void Chip8::emulateCycle() {
                     V[X] = V[X] ^ V[Y]; //XOR
                     break;
                 case 4: {
-                    std::cout << "V[Y] is " << static_cast<int>(V[Y]) << std::endl;
-                    std::cout << "V[X] (before) is " << static_cast<int>(V[X]) << std::endl;
+                    //std::cout << "V[Y] is " << static_cast<int>(V[Y]) << std::endl;
+                    //std::cout << "V[X] (before) is " << static_cast<int>(V[X]) << std::endl;
                     
                     uint16_t sum = V[X] + V[Y];
-                    std::cout << "sum is " << static_cast<int>(sum) << std::endl;
                     V[0xF] = (sum > 255) ? 1 : 0;
                     V[X] = sum & 0xFF;
-                    //std::cout << "[case 4] X is " << static_cast<int>(X) << std::endl;
-                    std::cout << "V[X] is " << static_cast<int>(V[X]) << std::endl;
+                    //std::cout << "8XY4: V[" << static_cast<int>(X) << "] is " << static_cast<int>(V[X]) << std::endl;
 
                     break;
                 }
                 case 5: {
-                    if (V[X] > V[Y]) { //ambiguous on >= or >?
+                    if (V[X] >= V[Y]) { //ambiguous on >= or >?
                         V[0xF] = 1;
                     } else {
                         V[0xF] = 0;
                     }
                     V[X] -= V[Y];
-                    std::cout << " [case 5] X is " << static_cast<int>(X) << std::endl;
-                    std::cout << "V[X] is " << static_cast<int>(V[X]) << std::endl;
+                    //std::cout << " [case 5] X is " << static_cast<int>(X) << std::endl;
+                    //std::cout << "V[X] is " << static_cast<int>(V[X]) << std::endl;
 
                     break;
                 }
@@ -180,14 +187,14 @@ void Chip8::emulateCycle() {
                     break;  
                 }                  
                 case 7: {
-                    if (V[Y] > V[X]) { //ambiguous on >= or >?
+                    if (V[Y] >= V[X]) { //ambiguous on >= or >?
                         V[0xF] = 1;
                     } else {
                         V[0xF] = 0;
                     }
                     V[X] = V[Y] - V[X];
-                    std::cout << "[case 7] X is " << static_cast<int>(X) << std::endl;
-                    std::cout << "V[X] is " << static_cast<int>(V[X]) << std::endl;
+                    //std::cout << "[case 7] X is " << static_cast<int>(X) << std::endl;
+                    //std::cout << "V[X] is " << static_cast<int>(V[X]) << std::endl;
 
                     break;
                 }
@@ -213,8 +220,9 @@ void Chip8::emulateCycle() {
             pc = NNN + V[0];
             break;
         case 0xC: {
-            int randNum = rand() % (NN + 1); //do we want a diff random number every time the program runs?
+            uint8_t randNum = rand() % 256; //do we want a diff random number every time the program runs?
             V[X] = randNum & NN;
+            //std::cout << "after rand, V[X] is " << static_cast<int>(V[X]) << std::endl;
             break;
         }
         case 0xD: {
@@ -232,26 +240,21 @@ void Chip8::emulateCycle() {
 
                 for (int xline = 0; xline < 8; xline++) {
                     unsigned short mask = 0x80 >> xline;
-                    //std::cout << (pixel & mask) << std::endl;
                     if ((pixel & mask) != 0) { // it is on
                         int idx = x + xline + ((y + yline) * 64);
-                        //std::cout << "Drawing at (" << x + xline << ", " << y + yline << ") Index: " 
-          //<< (x + xline + ((y + yline) * 64)) << std::endl;
                         if (gfx[idx] == 1) {
                             V[0xF] = 1;
                             //std::cout << "Collision detected at: " << (x + xline) << "," << (y + yline) << std::endl;
                         }
                         gfx[idx] ^= 1;
-
                     }
                 }
-
             }
             drawFlag = true;
             break;
         }   
         case 0xE: {
-            if (N == 0xE) {
+            if (NN == 0x9E) {
                 if (key[V[X]] != 0) {
                     pc += 2;
                 }
@@ -288,11 +291,13 @@ void Chip8::emulateCycle() {
                     }
                     if (!key_press) {
                         pc -= 2;
+                        return;
                     }
                     break;
                 }
                 case 0x29: {
-                    I = V[X]; //LEFT OFF HERE
+                    I = V[X] * 5; //LEFT OFF HERE
+                    //std::cout << "FX29 called: V[" << static_cast<int>(X) << "] = " << static_cast<int>(V[X]) << std::endl;
                     break;
                 }
                 case 0x33: {
@@ -304,18 +309,26 @@ void Chip8::emulateCycle() {
                 }
                 case 0x55: {
                     unsigned short j = I;
-                    for (uint8_t i = 0; i < X; i++) {
+                    if (X > 0xF) {
+                        std::cout << "(55)X is " << static_cast<int>(X) << std::endl;
+                    }
+                    for (uint8_t i = 0; i <= X; i++) {
                         memory[j] = V[i];
                         j += 1;
                     }
+                    //I += X + 1;
                     break;
                 }
                 case 0x65: {
                     unsigned short k = I;
-                    for (uint8_t i = 0; i < X; i++) {
+                    if (X > 0xF) {
+                        std::cout << "(65)X is " << static_cast<int>(X) << std::endl;
+                    }
+                    for (uint8_t i = 0; i <= X; i++) {
                         V[i] = memory[k]; // not switch i and k as well?
                         k += 1;
                     }
+                    //I += X + 1;
                     break;
                 }
 
